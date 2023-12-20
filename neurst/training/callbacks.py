@@ -208,6 +208,8 @@ class MetricReductionCallback(CentralizedCallback):
             logs[metric] = value
 
     def custom_on_train_batch_end(self, step, logs=None):
+        # Existing code...
+        print(f"Batch {step} - Metrics: {logs}")  # Add this line for debugging
         self._accumulated_time_secs += time.time() - self._last_triggered_time
         if step % self._summary_steps == 0:
             if self._strategy == "horovod":
@@ -230,6 +232,7 @@ class MetricReductionCallback(CentralizedCallback):
                     "accuracy": logs["accuracy"] if "accuracy" in logs else None
                 }
                 self.training_data.append(current_data)
+                print(f"Current Data: {current_data}, Training Data: {self.training_data[-5:]}")  # Add this line
 
                 logging_metrics = {"step": step}
                 if self._lr_schedule is not None:

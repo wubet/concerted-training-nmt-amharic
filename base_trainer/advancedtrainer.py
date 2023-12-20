@@ -180,8 +180,8 @@ class AdvancedTrainer(BaseEntry):
         Step 5: Fetch training training.
         Step 6: TRAIN!!!
         """
-        if not os.path.exists('output'):
-            os.makedirs('output')
+        if not os.path.exists('outputs'):
+            os.makedirs('outputs')
 
         if self._hvd_backend == "horovod":
             import horovod.tensorflow.keras as hvd
@@ -279,32 +279,44 @@ class AdvancedTrainer(BaseEntry):
         if not self._tb_log_dir:
             self._tb_log_dir = os.path.join(self.model_dir, "train")
 
+        # training_callbacks = [MetricReductionCallback(self.strategy, self._summary_steps, self._tb_log_dir,
+        #                                               device="GPU:0", lr_schedule=self._lr_schedule)]
         training_callbacks = [MetricReductionCallback(self.strategy, self._summary_steps, self._tb_log_dir,
-                                                      device="GPU:0", lr_schedule=self._lr_schedule)]
+                                                      device="CPU:0", lr_schedule=self._lr_schedule)]
 
-        if os.path.exists('output/training_data.csv'):
-            with open('output/training_data.csv', 'r') as csvfile:
+        if os.path.exists('outputs/training_data.csv'):
+            with open('outputs/training_data.csv', 'r') as csvfile:
                 reader = csv.DictReader(csvfile)
                 callback = [cb for cb in training_callbacks if isinstance(cb, MetricReductionCallback)][0]
                 callback.training_data = [row for row in reader]
 
+        # Collecting training data from the callback
+        callback = [cb for cb in training_callbacks if isinstance(cb, MetricReductionCallback)][0]
+        training_data = callback.training_data
+        print(f"Training Data: {training_data}")  # Add this
+
         if self._hvd_backend is None or hvd.rank() == 0:
+            model_save_path = os.path.join('outputs', 'CTNMT_model')
+            tf.saved_model.save(keras_model, model_save_path)
+
             training_callbacks.append(
                 CustomCheckpointCallback(self.task.model_configs(self.model),
                                          save_checkpoint_steps=self._save_checkpoint_steps))
 
             # save the metrics while saving the checkpoint
-            callback = [cb for cb in training_callbacks if isinstance(cb, MetricReductionCallback)][0]
-            with open('output/training_data.csv', 'w', newline='') as csvfile:
+            with open('outputs/training_data.csv', 'w', newline='') as csvfile:
                 fieldnames = ['step', 'loss', 'lr', 'accuracy']
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writeheader()
-                for row in callback.training_data:
+                for row in training_data:
                     writer.writerow(row)
+            print("Training metrics written to CSV file.")
 
             if self._validator is not None:
                 training_callbacks.append(self._validator.build(self.strategy, self.task, self.model))
         if self._hvd_backend is not None:
+            model_save_path = os.path.join('outputs', 'CTNMT_model')
+            tf.saved_model.save(keras_model, model_save_path)
             # Horovod: average metrics among workers at the end of every epoch.
             #
             # Note: This callback must be in the list before the ReduceLROnPlateau,
@@ -316,6 +328,16 @@ class AdvancedTrainer(BaseEntry):
             # This is necessary to ensure consistent initialization of all workers when
             # training is started with random weights or restored from a checkpoint.
             training_callbacks.insert(0, hvd.callbacks.BroadcastGlobalVariablesCallback(0, device="GPU:0"))
+
+            # save the metrics while saving the checkpoint
+            with open('outputs/training_data.csv', 'w', newline='') as csvfile:
+                fieldnames = ['step', 'loss', 'lr', 'accuracy']
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+                for row in training_data:
+                    writer.writerow(row)
+            print("Training metrics written to CSV file.")
+
             if self._lr_schedule is not None:
                 training_callbacks.append(LearningRateScheduler(self._lr_schedule))
 
@@ -348,10 +370,11 @@ class AdvancedTrainer(BaseEntry):
         logging.info(history.history)
 
         epoch_data = []
-        with open('output/training_data.csv', 'r') as csvfile:
+        with open('outputs/training_data.csv', 'r') as csvfile:
             reader = csv.reader(csvfile)
             next(reader)  # Skip the header row
             for row in reader:
+                print(f"CSV Row: {row}")
                 step, loss, lr, accuracy = row
                 epoch_data.append((int(step), float(loss), float(accuracy), float(lr)))
 

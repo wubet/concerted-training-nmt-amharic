@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 def plot_graph(epoch_data, args):
     # Ensure the output directory exists
-    output_dir = "output"
+    output_dir = "outputs"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
