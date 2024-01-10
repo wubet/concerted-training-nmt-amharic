@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import csv
 import os
 import re
 from distutils.version import LooseVersion
@@ -159,3 +160,33 @@ def is_tf_tensor(x):
     if IS_PREV_TF_2_4_0:
         return isinstance(x, tf.Tensor)
     return tf.is_tensor(x)
+
+
+def get_max_training_step(csv_file_path):
+    """Function to get the maximum training step from a given CSV file.
+
+    Args:
+        csv_file_path (str): The file path to the CSV file.
+
+    Returns:
+        int: The maximum training step found in the CSV file.
+    """
+    max_training_step = 0  # Default to 0
+
+    if os.path.exists(csv_file_path):
+        with open(csv_file_path, 'r') as csvfile:
+            reader = csv.DictReader(csvfile)
+
+            # Extract 'step' values and convert them to integers
+            steps = [int(row['step']) for row in reader if 'step' in row and row['step'].isdigit()]
+
+            # Find the maximum step if the list is not empty
+            if steps:
+                max_training_step = max(steps)
+                print("Maximum training step found:", max_training_step)
+            else:
+                print("No valid 'step' values found in the CSV.")
+    else:
+        print(f"The file {csv_file_path} does not exist.")
+
+    return max_training_step

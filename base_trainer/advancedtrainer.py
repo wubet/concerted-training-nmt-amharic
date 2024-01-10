@@ -33,6 +33,7 @@ class AdvancedTrainer(BaseEntry):
     def __init__(self, args, **kwargs):
         """ Initializes a util class for training neural models. """
         super(AdvancedTrainer, self).__init__(**kwargs)
+        self.csv_file = 'outputs/training_data.cs'
         self._tb_log_dir = args["tb_log_dir"]
         self._train_steps = args["train_steps"]
         self._train_epochs = args["train_epochs"]
@@ -199,6 +200,7 @@ class AdvancedTrainer(BaseEntry):
                     _tfds = _tfds.concatenate(ds)
             tfds = _tfds
         tfds = tfds.prefetch(tf.data.experimental.AUTOTUNE)
+
         # Step 1: create a models
         with training_utils.get_strategy_scope(self.strategy):
             inps = self.task.create_inputs(compat.ModeKeys.TRAIN)
@@ -273,50 +275,47 @@ class AdvancedTrainer(BaseEntry):
                 keras_model.compile(self._optimizer, experimental_run_tf_function=False)
             keras_model.summary()
             summary_model_variables(self.model, self._freeze_variables)
+
         # initialize the checkpoint manager
         _ = compat.get_saver_or_default(self.model, self.model_dir, max_to_keep=self._checkpoints_max_to_keep)
         # build training
         if not self._tb_log_dir:
             self._tb_log_dir = os.path.join(self.model_dir, "train")
 
-        # training_callbacks = [MetricReductionCallback(self.strategy, self._summary_steps, self._tb_log_dir,
-        #                                               device="GPU:0", lr_schedule=self._lr_schedule)]
         training_callbacks = [MetricReductionCallback(self.strategy, self._summary_steps, self._tb_log_dir,
-                                                      device="CPU:0", lr_schedule=self._lr_schedule)]
+                                                      device="GPU:0", lr_schedule=self._lr_schedule,
+                                                      save_checkpoint_steps=self._save_checkpoint_steps)]
 
-        if os.path.exists('outputs/training_data.csv'):
-            with open('outputs/training_data.csv', 'r') as csvfile:
+        # Initialize max_training_step to a default value
+        max_training_step = 0
+
+        if os.path.exists(self.csv_file):
+            with open(self.csv_file, 'r') as csvfile:
                 reader = csv.DictReader(csvfile)
                 callback = [cb for cb in training_callbacks if isinstance(cb, MetricReductionCallback)][0]
                 callback.training_data = [row for row in reader]
 
-        # Collecting training data from the callback
-        callback = [cb for cb in training_callbacks if isinstance(cb, MetricReductionCallback)][0]
-        training_data = callback.training_data
-        print(f"Training Data: {training_data}")  # Add this
+                # Extract 'step' values and convert them to integers
+                steps = [int(row['step']) for row in callback.training_data if 'step' in row and row['step'].isdigit()]
+
+                # Find the maximum step if the list is not empty
+                if steps:
+                    max_training_step = max(steps)
+                    print("Maximum training step found:", max_training_step)
+                else:
+                    print("No valid 'step' values found in the CSV.")
+        else:
+            print(f"The file {self.csv_file} does not exist.")
 
         if self._hvd_backend is None or hvd.rank() == 0:
-            model_save_path = os.path.join('outputs', 'CTNMT_model')
-            tf.saved_model.save(keras_model, model_save_path)
-
             training_callbacks.append(
                 CustomCheckpointCallback(self.task.model_configs(self.model),
-                                         save_checkpoint_steps=self._save_checkpoint_steps))
-
-            # save the metrics while saving the checkpoint
-            with open('outputs/training_data.csv', 'w', newline='') as csvfile:
-                fieldnames = ['step', 'loss', 'lr', 'accuracy']
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                writer.writeheader()
-                for row in training_data:
-                    writer.writerow(row)
-            print("Training metrics written to CSV file.")
+                                         save_checkpoint_steps=self._save_checkpoint_steps,
+                                         step_counter=max_training_step))
 
             if self._validator is not None:
                 training_callbacks.append(self._validator.build(self.strategy, self.task, self.model))
         if self._hvd_backend is not None:
-            model_save_path = os.path.join('outputs', 'CTNMT_model')
-            tf.saved_model.save(keras_model, model_save_path)
             # Horovod: average metrics among workers at the end of every epoch.
             #
             # Note: This callback must be in the list before the ReduceLROnPlateau,
@@ -328,15 +327,6 @@ class AdvancedTrainer(BaseEntry):
             # This is necessary to ensure consistent initialization of all workers when
             # training is started with random weights or restored from a checkpoint.
             training_callbacks.insert(0, hvd.callbacks.BroadcastGlobalVariablesCallback(0, device="GPU:0"))
-
-            # save the metrics while saving the checkpoint
-            with open('outputs/training_data.csv', 'w', newline='') as csvfile:
-                fieldnames = ['step', 'loss', 'lr', 'accuracy']
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                writer.writeheader()
-                for row in training_data:
-                    writer.writerow(row)
-            print("Training metrics written to CSV file.")
 
             if self._lr_schedule is not None:
                 training_callbacks.append(LearningRateScheduler(self._lr_schedule))
@@ -369,8 +359,11 @@ class AdvancedTrainer(BaseEntry):
 
         logging.info(history.history)
 
+        model_save_path = os.path.join('outputs', 'CTNMT_model')
+        tf.saved_model.save(keras_model, model_save_path)
+
         epoch_data = []
-        with open('outputs/training_data.csv', 'r') as csvfile:
+        with open(self.csv_file, 'r') as csvfile:
             reader = csv.reader(csvfile)
             next(reader)  # Skip the header row
             for row in reader:
@@ -382,6 +375,3 @@ class AdvancedTrainer(BaseEntry):
         # You may need to adjust the source ('s') and target ('t') languages based on your training setup
         plot_args = argparse.Namespace(s='en', t='am')
         plot_graph(epoch_data, plot_args)
-
-
-

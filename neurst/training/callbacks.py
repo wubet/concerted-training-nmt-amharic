@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import csv
 import time
 import traceback
 from abc import ABCMeta
@@ -31,16 +32,25 @@ from neurst.utils.configurable import ModelConfigs
 class CentralizedCallback(tf.keras.callbacks.Callback):
     """ Custom base Callback for handling global step. """
 
-    def __init__(self):
+    def __init__(self, step_counter=None):
         super(CentralizedCallback, self).__init__()
-        self.__global_step = compat.get_registered_initial_step()
+        self.csv_file = 'outputs/training_data.cs'
+        if step_counter is not None:
+            self.__global_step = step_counter
+        else:
+            self.__global_step = compat.get_max_training_step(self.csv_file)
 
     def on_train_begin(self, logs=None):
         super(CentralizedCallback, self).on_train_begin(logs)
-        self.__global_step = compat.get_registered_initial_step()
+        if self.__global_step is None or isinstance(self.__global_step, int) and self.__global_step < 1:
+            self.__global_step = compat.get_max_training_step(self.csv_file)
 
     def on_train_batch_begin(self, batch, logs=None):
-        self.__global_step += 1
+        if self.__global_step is not None:
+            if isinstance(self.__global_step, int):
+                self.__global_step += 1
+            else:
+                self.__global_step.assign_add(1)
         self.custom_on_train_batch_begin(self.__global_step, logs)
 
     def on_train_batch_end(self, batch, logs=None):
@@ -61,7 +71,8 @@ class CustomCheckpointCallback(CentralizedCallback):
     def __init__(self,
                  model_configs,
                  save_checkpoint_steps=1000,
-                 checkpoint_manager=None):
+                 checkpoint_manager=None,
+                 step_counter=None):
         """ Initializes custom checkpoint callback.
 
         Args:
@@ -69,7 +80,7 @@ class CustomCheckpointCallback(CentralizedCallback):
             save_checkpoint_steps: An int scalar, saving checkpoint this every steps.
             checkpoint_manager: A CheckpointManager instance.
         """
-        super(CustomCheckpointCallback, self).__init__()
+        super(CustomCheckpointCallback, self).__init__(step_counter=step_counter)
         self._checkpoint_manager = checkpoint_manager
         if self._checkpoint_manager is None:
             self._checkpoint_manager = compat.get_saver_or_default()
@@ -118,9 +129,10 @@ class LearningRateScheduler(CentralizedCallback):
 class MetricReductionCallback(CentralizedCallback):
 
     def __init__(self, strategy, summary_steps, log_dir,
-                 device='', lr_schedule=None):
+                 device='', lr_schedule=None, save_checkpoint_steps=1000):
         super(MetricReductionCallback, self).__init__()
         self._summary_steps = summary_steps
+        self._save_checkpoint_steps = save_checkpoint_steps  # Added to determine when to save CSV
         self._log_dir = log_dir
         self._file_writer = tf.summary.create_file_writer(self._log_dir)
         self._file_writer.set_as_default()
@@ -137,6 +149,8 @@ class MetricReductionCallback(CentralizedCallback):
         self._allreduce_ops = {}
         self._allreduce_ranks = 1.
         self.training_data = []
+
+        self.csv_file = 'outputs/training_data.cs'
 
     def on_train_begin(self, logs=None):
         """ At the begining of training, write the graph to the tensorboard. """
@@ -207,9 +221,23 @@ class MetricReductionCallback(CentralizedCallback):
         for metric, value in reduced_logs.items():
             logs[metric] = value
 
+    def _write_metrics_to_csv(self):
+        """Write the training metrics to a CSV file while saving the checkpoint."""
+        with open(self.csv_file, 'w', newline='') as csvfile:
+            fieldnames = ['step', 'loss', 'lr', 'accuracy']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for row in self.training_data:
+                writer.writerow(row)
+        print("Training metrics written to CSV file.")
+
     def custom_on_train_batch_end(self, step, logs=None):
-        # Existing code...
-        print(f"Batch {step} - Metrics: {logs}")  # Add this line for debugging
+        if isinstance(step, tf.Tensor):
+            # It's a TensorFlow tensor; now check if it's specifically an int64 type
+            if step.dtype == tf.int64:
+                # Convert it to a numpy array and get the Python native type, e.g., int
+                step = step.numpy().item()
+        super(MetricReductionCallback, self).custom_on_train_batch_end(step, logs)
         self._accumulated_time_secs += time.time() - self._last_triggered_time
         if step % self._summary_steps == 0:
             if self._strategy == "horovod":
@@ -221,7 +249,7 @@ class MetricReductionCallback(CentralizedCallback):
                 steps_per_sec = float(self._summary_steps) / self._accumulated_time_secs
                 if "accuracy" in logs:
                     logging.info(
-                        f"Update {step}\tTrainingLoss={logs['loss']:.2f}\tAccuracy={logs['accuracy']:.2f}\tSpeed {secs_per_step:.3f} secs/step {steps_per_sec:.1f} steps/sec")
+                        f"Update {step}\tTrainingLoss={logs['loss']:.2f}\taccuracy={logs['accuracy']:.2f}\tSpeed {secs_per_step:.3f} secs/step {steps_per_sec:.1f} steps/sec")
                 else:
                     logging.info("Update %d\tTrainingLoss=%.2f\tSpeed %.3f secs/step %.1f steps/sec",
                                  step, logs["loss"], secs_per_step, steps_per_sec)
@@ -259,3 +287,6 @@ class MetricReductionCallback(CentralizedCallback):
                 except tf.errors.OpError:
                     logging.info("Fail to summary metrics.")
             self._accumulated_time_secs = 0.
+        if step % self._save_checkpoint_steps == 0:
+            # Writing to CSV every save_checkpoint_steps steps
+            self._write_metrics_to_csv()
