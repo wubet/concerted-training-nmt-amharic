@@ -2,9 +2,9 @@ model_dir: tmp/dynamic_switch
 
 entry.class: AdvancedTrainer
 entry.params:
-  train_steps: 100
-  save_checkpoint_steps: 5
-  summary_steps: 20
+  train_steps: 1000000
+  save_checkpoint_steps: 1000
+  summary_steps: 200
   criterion.class: LabelSmoothedCrossEntropy
   optimizer.class: adam
   optimizer.params:
@@ -15,7 +15,7 @@ entry.params:
   lr_schedule.params:
     initial_factor: 1.0
     dmodel: 768
-    warmup_steps: 40
+    warmup_steps: 4000
   pretrain_model: tmp/BERT_BASE
   freeze_variables: bert
 
@@ -32,8 +32,8 @@ validator.params:
     src_file: tmp/data/test.en2de.in
     trg_file: tmp/data/test.en2de.out
   eval_batch_size: 32
-  eval_start_at: 50
-  eval_steps: 50
+  eval_start_at: 1000
+  eval_steps: 1000
   eval_criterion.class: label_smoothed_cross_entropy
   eval_search_method: beam_search
   eval_search_method.params:
@@ -42,9 +42,10 @@ validator.params:
     extra_decode_length: 50
     maximum_decode_length: 200
   eval_metric: CompoundSplitBleu
-  eval_top_checkpoints_to_keep: 5
+  eval_top_checkpoints_to_keep: 10
   eval_auto_average_checkpoints: true
   eval_estop_patience: 30
+  eval_metric.class: CompoundSplitBleu
 
 dataset.class: ParallelTextDataset
 dataset.params:
