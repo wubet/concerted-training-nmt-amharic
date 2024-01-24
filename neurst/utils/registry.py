@@ -84,6 +84,13 @@ def setup_registry(registry_name, base_class=None, create_fn=None,
         if create_fn is not None:
             assert hasattr(builder, create_fn), "{} has no {} for creation.".format(cls_, create_fn)
             builder = getattr(builder, create_fn)
+
+        # Add custom parameters to params_ (add this part here)
+        if registry_name == 'entry':
+            for key in ["output_dir", "csv_output_dir", "model_output_dir"]:
+                if key in args:
+                    params_[key] = args[key]
+
         if kwargs is None:
             kwargs = {}
         assert isinstance(params_, dict), f"Not supported type: {type(params_)} for params"

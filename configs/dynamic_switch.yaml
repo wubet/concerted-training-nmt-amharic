@@ -5,6 +5,9 @@ entry.params:
   train_steps: 1000000
   save_checkpoint_steps: 1000
   summary_steps: 200
+  output_dir: output
+  csv_output_dir: output/training_data.csv
+  model_output_dir: output/CTNMT_model
   criterion.class: LabelSmoothedCrossEntropy
   optimizer.class: adam
   optimizer.params:

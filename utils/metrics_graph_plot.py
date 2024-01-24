@@ -3,9 +3,9 @@ import os
 import matplotlib.pyplot as plt
 
 
-def plot_graph(epoch_data, args):
+def plot_graph(epoch_data, args, output_dir):
     # Ensure the output directory exists
-    output_dir = "outputs"
+    # output_dir = "outputs"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 

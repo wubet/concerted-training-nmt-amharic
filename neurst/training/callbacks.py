@@ -32,9 +32,9 @@ from neurst.utils.configurable import ModelConfigs
 class CentralizedCallback(tf.keras.callbacks.Callback):
     """ Custom base Callback for handling global step. """
 
-    def __init__(self, step_counter=None):
+    def __init__(self, step_counter=None, csv_output_dir=None):
         super(CentralizedCallback, self).__init__()
-        self.csv_file = 'outputs/training_data.cs'
+        self.csv_file = csv_output_dir
         if step_counter is not None:
             self.__global_step = step_counter
         else:
@@ -72,7 +72,8 @@ class CustomCheckpointCallback(CentralizedCallback):
                  model_configs,
                  save_checkpoint_steps=1000,
                  checkpoint_manager=None,
-                 step_counter=None):
+                 step_counter=None,
+                 csv_output_dir=None):
         """ Initializes custom checkpoint callback.
 
         Args:
@@ -80,7 +81,7 @@ class CustomCheckpointCallback(CentralizedCallback):
             save_checkpoint_steps: An int scalar, saving checkpoint this every steps.
             checkpoint_manager: A CheckpointManager instance.
         """
-        super(CustomCheckpointCallback, self).__init__(step_counter=step_counter)
+        super(CustomCheckpointCallback, self).__init__(step_counter=step_counter, csv_output_dir=csv_output_dir)
         self._checkpoint_manager = checkpoint_manager
         if self._checkpoint_manager is None:
             self._checkpoint_manager = compat.get_saver_or_default()

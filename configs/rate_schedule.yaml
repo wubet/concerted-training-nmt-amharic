@@ -2,15 +2,18 @@ model_dir: ../tmp/rate_schedule
 
 entry.class: AdvancedTrainer
 entry.params:
-  train_steps: 100
-  save_checkpoint_steps: 10
-  summary_steps: 20
+  train_steps: 100000000
+  save_checkpoint_steps: 1000
+  summary_steps: 200
+  output_dir: output
+  csv_output_dir: output/training_data.csv
+  model_output_dir: output/CTNMT_model
   criterion.class: LabelSmoothedCrossEntropy
   optimizer.class: adam
   optimizer_controller: RateScheduledOptimizer
   optimizer_controller_args:
-    warm_steps: 10
-    freeze_steps: 20
+    warm_steps: 10000
+    freeze_steps: 20000
     controlled_varname_pattern: bert
   optimizer.params:
     epsilon: 1.e-9
@@ -20,7 +23,7 @@ entry.params:
   lr_schedule.params:
     initial_factor: 1.0
     dmodel: 768
-    warmup_steps: 40
+    warmup_steps: 4000
   freeze_variables: bert
   pretrain_model: ../tmp/BERT_BASE
 
@@ -60,8 +63,8 @@ validator.params:
     src_file: ../tmp/data/test.en2de.in
     trg_file: ../tmp/data/test.en2de.out
   eval_batch_size: 32
-  eval_start_at: 50
-  eval_steps: 50
+  eval_start_at: 1000
+  eval_steps: 1000
   eval_criterion.class: label_smoothed_cross_entropy
   eval_search_method: beam_search
   eval_search_method.params:

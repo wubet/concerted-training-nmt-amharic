@@ -207,6 +207,13 @@ DEFAULT_CONFIG_FLAG = Flag(name="config_paths", dtype=Flag.TYPE.STRING, multiple
 EXTRA_IMPORT_LIB = Flag(name="include", dtype=Flag.TYPE.STRING, multiple=True,
                         help="The extra python path to be included and imported.")
 
+# Define custom flags
+CUSTOM_FLAGS = [
+    Flag("output_dir", dtype=Flag.TYPE.STRING, default=None, help="Directory for output files."),
+    Flag("csv_output_dir", dtype=Flag.TYPE.STRING, default=None, help="Directory for CSV output files."),
+    Flag("model_output_dir", dtype=Flag.TYPE.STRING, default=None, help="Directory for model output files.")
+]
+
 
 def add_extra_includes():
     arg_parser = argparse.ArgumentParser()
@@ -248,22 +255,45 @@ def add_extra_includes():
 
 
 def define_flags(flag_list: list, arg_parser=None, with_config_file=True) -> argparse.ArgumentParser:
+    # """ Defines the root module name.
+
+    # Args:
+    #     flag_list: A list of flags.
+    #     arg_parser: The argument parser.
+    #     with_config_file: Whether to define `config_paths` as default.
+    #
+    # Returns: The argument parser.
+    # """
+    # add_extra_includes()
+    # if arg_parser is None:
+    #     arg_parser = argparse.ArgumentParser()
+    # if with_config_file:
+    #     DEFAULT_CONFIG_FLAG.define(arg_parser)
+    # for f in flag_list:
+    #     f.define(arg_parser)
+    # return arg_parser
     """ Defines the root module name.
 
-    Args:
-        flag_list: A list of flags.
-        arg_parser: The argument parser.
-        with_config_file: Whether to define `config_paths` as default.
+        Args:
+            flag_list: A list of flags.
+            arg_parser: The argument parser.
+            with_config_file: Whether to define `config_paths` as default.
 
-    Returns: The argument parser.
-    """
+        Returns: The argument parser.
+        """
     add_extra_includes()
     if arg_parser is None:
         arg_parser = argparse.ArgumentParser()
     if with_config_file:
         DEFAULT_CONFIG_FLAG.define(arg_parser)
-    for f in flag_list:
+
+    # Append custom flags to the flag list
+    extended_flag_list = flag_list + CUSTOM_FLAGS
+
+    # Define flags from the extended flag list
+    for f in extended_flag_list:
         f.define(arg_parser)
+
     return arg_parser
 
 
@@ -287,11 +317,22 @@ def get_argparser(module_name, cls_name, backend="tf") -> argparse.ArgumentParse
 def _flatten_args(flag_list, from_args, backend="tf"):
     args = copy.deepcopy(from_args)
     flattened_args = {}
+
+    # Define custom keys
+    custom_keys = ['output_dir', 'csv_output_dir', 'model_output_dir']
+
     for f in flag_list:
         if isinstance(f, Flag) and f.name in args:
             flattened_args[f.name] = args.pop(f.name)
     for f in flag_list:
         if isinstance(f, ModuleFlag):
+
+            # Add logic to handle custom keys
+            if 'entry.params' in args:
+                for custom_key in custom_keys:
+                    if custom_key in args['entry.params']:
+                        flattened_args[custom_key] = args['entry.params'].pop(custom_key)
+
             if f.cls_key in args:
                 flattened_args[f.cls_key] = args.pop(f.cls_key)
                 args.pop(f.name, None)
@@ -523,7 +564,7 @@ def verbose_flags(flag_list, args, remaining_argv, backend="tf"):
                 logging.info(f" {f.cls_key}: {verbose_args[f.cls_key]}")
             if f.params_key in verbose_args:
                 if (verbose_args.get(f.cls_key, None) and hasattr(
-                    REGISTRIES[backend][f.module_name][verbose_args[f.cls_key]], "class_or_method_args")):
+                        REGISTRIES[backend][f.module_name][verbose_args[f.cls_key]], "class_or_method_args")):
                     logging.info(f" {f.params_key}:")
                     for ff in REGISTRIES[backend][f.module_name][verbose_args[f.cls_key]].class_or_method_args():
                         if isinstance(ff, Flag):

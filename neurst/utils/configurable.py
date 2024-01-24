@@ -251,7 +251,13 @@ def deep_merge_dict(dict_x, dict_y, path=None, local_overwrite=True,
         path = []
     if not local_overwrite:
         dict_x = copy.deepcopy(dict_x)
+
+    protected_keys = ['output_dir', 'csv_output_dir', 'model_output_dir']
+    protected_values = {k: dict_x[k] for k in protected_keys if k in dict_x}
+
     for key in dict_y:
+        if key in protected_keys and key in dict_x:
+            continue  # Skip merging for protected keys
         if dict_y[key] is None:
             if key not in dict_x:
                 dict_x[key] = None
@@ -271,6 +277,11 @@ def deep_merge_dict(dict_x, dict_y, path=None, local_overwrite=True,
                     raise KeyError("Key {} not in dict_x.".format(key))
             else:
                 dict_x[key] = dict_y[key]
+
+    # Re-assign protected values
+    for k, v in protected_values.items():
+        dict_x[k] = v
+
     return dict_x
 
 

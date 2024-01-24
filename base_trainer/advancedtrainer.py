@@ -33,7 +33,9 @@ class AdvancedTrainer(BaseEntry):
     def __init__(self, args, **kwargs):
         """ Initializes a util class for training neural models. """
         super(AdvancedTrainer, self).__init__(**kwargs)
-        self.csv_file = 'outputs/training_data.cs'
+        self.output_dir = args["output_dir"]
+        self.csv_output_dir = args["csv_output_dir"]
+        self.model_output_dir = args["model_output_dir"]
         self._tb_log_dir = args["tb_log_dir"]
         self._train_steps = args["train_steps"]
         self._train_epochs = args["train_epochs"]
@@ -289,8 +291,8 @@ class AdvancedTrainer(BaseEntry):
         # Initialize max_training_step to a default value
         max_training_step = 0
 
-        if os.path.exists(self.csv_file):
-            with open(self.csv_file, 'r') as csvfile:
+        if os.path.exists(self.csv_output_dir):
+            with open(self.csv_output_dir, 'r') as csvfile:
                 reader = csv.DictReader(csvfile)
                 callback = [cb for cb in training_callbacks if isinstance(cb, MetricReductionCallback)][0]
                 callback.training_data = [row for row in reader]
@@ -305,13 +307,14 @@ class AdvancedTrainer(BaseEntry):
                 else:
                     print("No valid 'step' values found in the CSV.")
         else:
-            print(f"The file {self.csv_file} does not exist.")
+            print(f"The file {self.csv_output_dir} does not exist.")
 
         if self._hvd_backend is None or hvd.rank() == 0:
             training_callbacks.append(
                 CustomCheckpointCallback(self.task.model_configs(self.model),
                                          save_checkpoint_steps=self._save_checkpoint_steps,
-                                         step_counter=max_training_step))
+                                         step_counter=max_training_step,
+                                         csv_output_dir=self.csv_output_dir))
 
             if self._validator is not None:
                 training_callbacks.append(self._validator.build(self.strategy, self.task, self.model))
@@ -359,11 +362,11 @@ class AdvancedTrainer(BaseEntry):
 
         logging.info(history.history)
 
-        model_save_path = os.path.join('outputs', 'CTNMT_model')
-        tf.saved_model.save(keras_model, model_save_path)
+        # model_save_path = os.path.join('outputs', 'CTNMT_model')
+        tf.saved_model.save(keras_model, self.model_output_dir)
 
         epoch_data = []
-        with open(self.csv_file, 'r') as csvfile:
+        with open(self.csv_output_dir, 'r') as csvfile:
             reader = csv.reader(csvfile)
             next(reader)  # Skip the header row
             for row in reader:
@@ -374,4 +377,4 @@ class AdvancedTrainer(BaseEntry):
         # Creating a dummy argparse Namespace object for the plot_graph function's `args` parameter
         # You may need to adjust the source ('s') and target ('t') languages based on your training setup
         plot_args = argparse.Namespace(s='en', t='am')
-        plot_graph(epoch_data, plot_args)
+        plot_graph(epoch_data, plot_args, self.output_dir)

@@ -173,6 +173,9 @@ def get_max_training_step(csv_file_path):
     """
     max_training_step = 0  # Default to 0
 
+    if csv_file_path is None:
+        return max_training_step
+
     if os.path.exists(csv_file_path):
         with open(csv_file_path, 'r') as csvfile:
             reader = csv.DictReader(csvfile)

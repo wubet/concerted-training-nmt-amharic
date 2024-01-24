@@ -32,6 +32,10 @@ FLAG_LIST = [
                     help="Whether to enable quantization for finetuning."),
     flags_core.Flag("quant_params", dtype=flags_core.Flag.TYPE.STRING,
                     help="A dict of parameters for quantization."),
+    # flags_core.Flag("output_dir", dtype=flags_core.Flag.TYPE.STRING, default=None, help="Directory for output files."),
+    # flags_core.Flag("csv_output_dir", dtype=flags_core.Flag.TYPE.STRING, default=None, help="Directory for CSV output files."),
+    # flags_core.Flag("model_output_dir", dtype=flags_core.Flag.TYPE.STRING, default=None, help="Directory for model output files."),
+
     flags_core.ModuleFlag(BaseEntry.REGISTRY_NAME, help="The program."),
     flags_core.ModuleFlag(Task.REGISTRY_NAME, help="The binding task."),
     flags_core.ModuleFlag(BaseModel.REGISTRY_NAME, help="The models."),
