@@ -19,7 +19,7 @@ The architecture's design emphasizes the harmonization of various training eleme
 
 ### Architecture Overview
 
-The "Amharic-English Concerted Training NMT" utilizes the neurst toolkit to construct its foundation, drawing upon the [CTNMT model architecture](https://github.com/bytedance/neurst/tree/master/examples/ctnmt) repository as detailed in [Towards Making the Most of BERT in Neural Machine Translation](https://arxiv.org/abs/1908.05672)" 
+The "Amharic-English Concerted Training NMT" utilizes the [neurst](https://github.com/bytedance/neurst) toolkit to construct its foundation, drawing upon the [CTNMT model architecture](https://github.com/bytedance/neurst/tree/master/examples/ctnmt) repository as detailed in [Towards Making the Most of BERT in Neural Machine Translation](https://arxiv.org/abs/1908.05672)" 
 
 ### Requirements and Installation:
 Tensorflow version = 2.4.0 \
