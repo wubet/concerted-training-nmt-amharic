@@ -39,13 +39,36 @@ pip3 install -r requirements.txt
 
 ### Data Preparation
 
+This step includes cleaning the data (removing unnecessary characters, normalizing text, etc.), tokenizing sentences (breaking text down into smaller parts like words or subwords), and applying more advanced text processing techniques to improve model training efficiency. 
+
 Clone the English-Amharic corpus.
 ```commandline
 Git clone https://github.com/wubet/unified-amharic-english-corpus.git
 ```
-This step includes cleaning the data (removing unnecessary characters, normalizing text, etc.), tokenizing sentences (breaking text down into smaller parts like words or subwords), and applying more advanced text processing techniques to improve model training efficiency. 
+We need to transliterate the Gee'z character representation into latin character representation.
 
-Preprocessing training data:
+For development or validation
+```buildoutcfg
+python3 translitration/create_transliteration.py \
+  --original_filenames=unified-amharic-english-corpus/datasets/dev.am-en.base.am \
+  --transliterate_filenames=unified-amharic-english-corpus/datasets/dev.am-en.transliteration.am \
+```
+
+For training
+```buildoutcfg
+python3 translitration/create_transliteration.py \
+  --original_filenames=unified-amharic-english-corpus/datasets/train.am-en.base.am \
+  --transliterate_filenames=unified-amharic-english-corpus/datasets/train.am-en.transliteration.am \
+```
+
+For testing
+```buildoutcfg
+python3 translitration/create_transliteration.py \
+  --original_filenames=unified-amharic-english-corpus/datasets/test.am-en.base.am \
+  --transliterate_filenames=unified-amharic-english-corpus/datasets/test.am-en.transliteration.am \
+```
+
+Preprocessing training data for source language:
 ```commandline
 python3 data/bilingual_data_processor.py \
 --original_path=../unified-amharic-english-corpus/datasets/train.am-en.base.en
@@ -55,10 +78,30 @@ python3 data/bilingual_data_processor.py \
 --task=train
 ```
 
-Preprocessing test data:
+Preprocessing training data for target language:
 ```commandline
 python3 data/bilingual_data_processor.py \
 --original_path=../unified-amharic-english-corpus/datasets/train.am-en.base.en
+--destination_dir=../tmp/data
+--source_language_alias=en
+--target_language_alias=am
+--task=train
+```
+
+Preprocessing test data for source language:
+```commandline
+python3 data/bilingual_data_processor.py \
+--original_path=../unified-amharic-english-corpus/datasets/test.am-en.base.en
+--destination_dir=../tmp/data
+--source_language_alias=en
+--target_language_alias=am
+--task=test
+```
+
+Preprocessing test data for target language:
+```commandline
+python3 data/bilingual_data_processor.py \
+--original_path=../unified-amharic-english-corpus/datasets/test.am-en.translitration.en
 --destination_dir=../tmp/data
 --source_language_alias=en
 --target_language_alias=am
