@@ -29,8 +29,8 @@ entry.params:
 
 dataset.class: ParallelTextDataset
 dataset.params:
-  src_file: ../tmp/data/train.en2de.in
-  trg_file: ../tmp/data/train.en2de.out
+  src_file: ../tmp/data/train.en2am.in
+  trg_file: ../tmp/data/train.en2am.out
   data_is_processed: false
 
 task.class: Translation
@@ -60,8 +60,8 @@ validator.class: SeqGenerationValidator
 validator.params:
   eval_dataset: parallel_text
   eval_dataset.params:
-    src_file: ../tmp/data/test.en2de.in
-    trg_file: ../tmp/data/test.en2de.out
+    src_file: ../tmp/data/test.en2am.in
+    trg_file: ../tmp/data/test.en2am.out
   eval_batch_size: 32
   eval_start_at: 1000
   eval_steps: 1000
