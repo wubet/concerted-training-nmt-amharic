@@ -52,8 +52,8 @@ validator.params:
 
 dataset.class: ParallelTextDataset
 dataset.params:
-  src_file: tmp/data/train.en2de.in
-  trg_file: tmp/data/train.en2de.out
+  src_file: tmp/data/train.en2am.in
+  trg_file: tmp/data/train.en2am.out
   data_is_processed: false
 
 task.class: Translation
