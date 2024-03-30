@@ -151,7 +151,7 @@ class MetricReductionCallback(CentralizedCallback):
         self._allreduce_ranks = 1.
         self.training_data = []
 
-        self.csv_file = 'outputs/training_data.cs'
+        self.csv_file = 'output/training_data.csv'
 
     def on_train_begin(self, logs=None):
         """ At the begining of training, write the graph to the tensorboard. """

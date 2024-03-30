@@ -18,6 +18,7 @@ import six
 from neurst.training.callbacks import CentralizedCallback
 from neurst.utils import compat
 from neurst.utils.flags_core import Flag
+from absl import logging
 
 
 @six.add_metaclass(ABCMeta)
@@ -54,6 +55,7 @@ class Validator(CentralizedCallback):
     def custom_on_train_batch_end(self, step, logs=None):
         _ = logs
         if step >= self._eval_start_at and step % self._eval_steps == 0:
+            logging.info(f"Starting evaluation at step {step}")
             self.validate(step)
 
     def on_train_begin(self, logs=None):

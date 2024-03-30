@@ -183,8 +183,8 @@ class AdvancedTrainer(BaseEntry):
         Step 5: Fetch training training.
         Step 6: TRAIN!!!
         """
-        if not os.path.exists('outputs'):
-            os.makedirs('outputs')
+        if not os.path.exists('output'):
+            os.makedirs('output')
 
         if self._hvd_backend == "horovod":
             import horovod.tensorflow.keras as hvd
@@ -362,8 +362,29 @@ class AdvancedTrainer(BaseEntry):
 
         logging.info(history.history)
 
-        # model_save_path = os.path.join('outputs', 'CTNMT_model')
-        tf.saved_model.save(keras_model, self.model_output_dir)
+        # Step before saving the model
+        # Define the input signature for serving
+        input_signature = {
+            'input': tf.TensorSpec(shape=[None, tf.shape(formatted_inps)], dtype=tf.float32),  # Adjust 'input_shape' accordingly
+        }
+
+        # Create a serving function
+        @tf.function(input_signature=[input_signature])
+        def serve_fn(serialized_examples):
+            # Parse the input tf.Example protobufs
+            examples = tf.io.parse_example(serialized_examples, input_signature)
+            # Get the input from the parsed example
+            model_input = examples['input']  # Adjust according to your input tensor name
+            # Run the model
+            predictions = keras_model(model_input, training=False)
+            # Return the predictions
+            return {'output': predictions}  # Adjust according to your output tensor name
+
+        # Get the serving function
+        serving_fn = serve_fn.get_concrete_function()
+
+        # Save the model with the serving function as the default signature
+        tf.saved_model.save(keras_model, self.model_output_dir, signatures={'serving_default': serving_fn})
 
         epoch_data = []
         with open(self.csv_output_dir, 'r') as csvfile:
