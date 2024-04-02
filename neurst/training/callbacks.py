@@ -150,7 +150,6 @@ class MetricReductionCallback(CentralizedCallback):
         self._allreduce_ops = {}
         self._allreduce_ranks = 1.
         self.training_data = []
-
         self.csv_file = 'output/training_data.csv'
 
     def on_train_begin(self, logs=None):
@@ -224,13 +223,18 @@ class MetricReductionCallback(CentralizedCallback):
 
     def _write_metrics_to_csv(self):
         """Write the training metrics to a CSV file while saving the checkpoint."""
-        with open(self.csv_file, 'w', newline='') as csvfile:
-            fieldnames = ['step', 'loss', 'lr', 'accuracy']
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-            for row in self.training_data:
-                writer.writerow(row)
-        print("Training metrics written to CSV file.")
+        try:
+            with open(self.csv_file, 'w', newline='') as csvfile:
+                fieldnames = ['step', 'loss', 'lr', 'accuracy']
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+                for row in self.training_data:
+                    writer.writerow(row)
+            logging.info(f"Training metrics successfully written to {self.csv_file}.")
+        except IOError as e:
+            logging.error(f"Failed to write training metrics to {self.csv_file}. IOError: {e}")
+        except Exception as e:
+            logging.error(f"An unexpected error occurred while writing training metrics to {self.csv_file}: {e}")
 
     def custom_on_train_batch_end(self, step, logs=None):
         if isinstance(step, tf.Tensor):
@@ -239,6 +243,9 @@ class MetricReductionCallback(CentralizedCallback):
                 # Convert it to a numpy array and get the Python native type, e.g., int
                 step = step.numpy().item()
         super(MetricReductionCallback, self).custom_on_train_batch_end(step, logs)
+        # Record and log the time taken to handle TensorFlow Tensor conversion
+        tf_tensor_conversion_time = time.time() - self._last_triggered_time
+        logging.info(f"TensorFlow Tensor conversion took {tf_tensor_conversion_time:.4f} seconds at step {step}")
         self._accumulated_time_secs += time.time() - self._last_triggered_time
         if step % self._summary_steps == 0:
             if self._strategy == "horovod":

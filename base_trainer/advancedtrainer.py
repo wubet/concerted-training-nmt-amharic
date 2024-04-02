@@ -303,9 +303,9 @@ class AdvancedTrainer(BaseEntry):
                 # Find the maximum step if the list is not empty
                 if steps:
                     max_training_step = max(steps)
-                    print("Maximum training step found:", max_training_step)
+                    logging.info(f"Maximum training step found:  {max_training_step}")
                 else:
-                    print("No valid 'step' values found in the CSV.")
+                    logging.info(f"No valid 'step' values found in the CSV.")
         else:
             print(f"The file {self.csv_output_dir} does not exist.")
 

@@ -161,22 +161,36 @@ class SeqGenerationValidator(CriterionValidator):
 
     def validate(self, step):
         super(SeqGenerationValidator, self).validate(step)
+        logging.info("Validation generation is started.")
         if not self._validate_gen:
+            logging.info("Validation generation is disabled.")
             return
-        start_time = time.time()
-        results = training_utils.make_predictions(
-            self._strategy, self._gen_model, self._gen_tfds, self._custom_dataset,
-            map_func=self._postprocess_fn)
-        elapsed = time.time() - start_time
-        elapsed_from_start = time.time() - self._gen_start_time
+
+        if self._gen_model is None or self._gen_tfds is None or self._custom_dataset is None:
+            logging.error("Validation failed due to missing model, dataset, or custom dataset.")
+            return
+        try:
+            # Log the start time of the entire validation process
+            logging.info("Starting the validation process at step %d", step)
+            start_time = time.time()
+            results = training_utils.make_predictions(
+                self._strategy, self._gen_model, self._gen_tfds, self._custom_dataset,
+                map_func=self._postprocess_fn)
+            elapsed = time.time() - start_time
+            logging.info("Finished predictions generation. Elapsed time: %.2f seconds", elapsed)
+            elapsed_from_start = time.time() - self._gen_start_time
+        except Exception as e:
+            logging.error(f"An error occurred during the validation process: {str(e)}")
+            return
 
         def _display_hypo(custom_ds_sources, custom_ds_targets, hypos, name=None):
             if name:
                 logging.info(f"===== Generation examples from {name} (Total {len(hypos)}) =====")
             else:
                 logging.info(f"===== Generation examples (Total {len(hypos)}) =====")
+            # Log each iteration of displaying hypotheses
             for sample_idx in random.sample(list(range(0, len(hypos))), 5):
-                logging.info("Sample %d", sample_idx)
+                logging.info("Displaying Sample %d", sample_idx)
                 if custom_ds_sources is not None:
                     logging.info("  Data: %s", custom_ds_sources[sample_idx])
                 logging.info("  Reference: %s", custom_ds_targets[sample_idx])
