@@ -42,7 +42,7 @@ task.params:
   trg_data_pipeline.class: TextDataPipeline
   trg_data_pipeline.params:
     subtokenizer: spm
-    subtokenizer_codes: tmp/vocab/spm.models
+    subtokenizer_codes: tmp/vocab/spm.model
     vocab_path: tmp/vocab/spm.vocab
   batch_size_per_gpu: 8000
   batch_by_tokens: true
