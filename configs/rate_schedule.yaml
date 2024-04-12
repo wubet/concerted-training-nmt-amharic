@@ -2,7 +2,7 @@ model_dir: ../tmp/rate_schedule
 
 entry.class: AdvancedTrainer
 entry.params:
-  train_steps: 100000000
+  train_steps: 1000000
   save_checkpoint_steps: 1000
   summary_steps: 200
   output_dir: output
