@@ -29,8 +29,8 @@ entry.params:
 
 dataset.class: ParallelTextDataset
 dataset.params:
-  src_file: ../tmp/data/train.en2am.in
-  trg_file: ../tmp/data/train.en2am.out
+  src_file: tmp/data/train.en2am.in
+  trg_file: tmp/data/train.en2am.out
   data_is_processed: false
 
 task.class: Translation
@@ -38,12 +38,12 @@ task.params:
   src_data_pipeline.class: BertDataPipeline
   src_data_pipeline.params:
     name: bert-base-uncased
-    vocab_path: ../tmp/vocab/vocab.txt
+    vocab_path: tmp/vocab/vocab.txt
   trg_data_pipeline.class: TextDataPipeline
   trg_data_pipeline.params:
     subtokenizer: spm
-    subtokenizer_codes: ../tmp/vocab/spm.models
-    vocab_path: ../tmp/vocab/spm.vocab
+    subtokenizer_codes: tmp/vocab/spm.models
+    vocab_path: tmp/vocab/spm.vocab
   batch_size_per_gpu: 8000
   batch_by_tokens: true
   max_src_len: 100
@@ -60,8 +60,8 @@ validator.class: SeqGenerationValidator
 validator.params:
   eval_dataset: parallel_text
   eval_dataset.params:
-    src_file: ../tmp/data/test.en2am.in
-    trg_file: ../tmp/data/test.en2am.out
+    src_file: tmp/data/test.en2am.in
+    trg_file: tmp/data/test.en2am.out
   eval_batch_size: 32
   eval_start_at: 1000
   eval_steps: 1000
