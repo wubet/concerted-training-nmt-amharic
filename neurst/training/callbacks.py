@@ -253,14 +253,6 @@ class MetricReductionCallback(CentralizedCallback):
             elif self._strategy == "byteps":
                 self._byteps_average_metrics_in_place(logs)
             if self._should_summary:
-                secs_per_step = self._accumulated_time_secs / float(self._summary_steps)
-                steps_per_sec = float(self._summary_steps) / self._accumulated_time_secs
-                if "accuracy" in logs:
-                    logging.info(
-                        f"Update {step}\tTrainingLoss={logs['loss']:.2f}\taccuracy={logs['accuracy']:.2f}\tSpeed {secs_per_step:.3f} secs/step {steps_per_sec:.1f} steps/sec")
-                else:
-                    logging.info("Update %d\tTrainingLoss=%.2f\tSpeed %.3f secs/step %.1f steps/sec",
-                                 step, logs["loss"], secs_per_step, steps_per_sec)
                 current_data = {
                     "step": step,
                     "loss": logs["loss"],
@@ -268,7 +260,6 @@ class MetricReductionCallback(CentralizedCallback):
                     "accuracy": logs["accuracy"] if "accuracy" in logs else None
                 }
                 self.training_data.append(current_data)
-                print(f"Current Data: {current_data}, Training Data: {self.training_data[-5:]}")  # Add this line
 
                 logging_metrics = {"step": step}
                 if self._lr_schedule is not None:
