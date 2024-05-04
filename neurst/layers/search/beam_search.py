@@ -437,7 +437,6 @@ def sequence_beam_search(symbols_to_logits_fn,
             constant_values=eos_id)
     return sorted_hypothesis, sorted_scores
 
-
 @register_search_layer
 class BeamSearch(SequenceSearch):
 
@@ -522,6 +521,7 @@ class BeamSearch(SequenceSearch):
         Returns:
             The search results (must be a tuple).
         """
+
         maximum_decode_length = self._maximum_decode_length
         max_data_len = kwargs.get("max_data_len", None)
         if maximum_decode_length is None:
@@ -549,3 +549,38 @@ class BeamSearch(SequenceSearch):
             padded_decode=self._padded_decode,
             enable_unk=self._enable_unk)
         return sorted_hypothesis, sorted_scores
+
+    def sequence_generation_fn(self, parsed_inp, maximum_decode_length=256):
+        """
+        Generates sequences using beam search based on model output.
+
+        Args:
+            model_output: Output from the model, expected to include necessary details for sequence generation.
+            strategy: Distribution strategy used during training for executing beam search in distributed manner.
+            keras_model: Trained Keras model for generating symbols to logits function.
+            Other arguments: Configuration for beam search.
+
+        Returns:
+            A tuple of sorted hypotheses and their corresponding scores.
+        """
+        with tf.name_scope("beam_search"):
+            decode_padded_length = maximum_decode_length if self._padded_decode else None
+            symbols_to_logits_fn, generation_initializer = self._model.get_symbols_to_logits_fn(
+                parsed_inp, is_training=False, is_inference=True,
+                decode_padded_length=decode_padded_length)
+        sorted_hypothesis, sorted_scores = sequence_beam_search(
+            symbols_to_logits_fn,
+            generation_initializer,
+            top_k=self._top_k,
+            beam_size=self._beam_size,
+            length_penalty=self._length_penalty,
+            extra_decode_length=self._extra_decode_length,
+            maximum_decode_length=maximum_decode_length,
+            minimum_decode_length=self._minimum_decode_length,
+            ensemble_weights=self._get_ensemble_weights(self._ensemble_weights),
+            padded_decode=self._padded_decode,
+            enable_unk=self._enable_unk)
+        return sorted_hypothesis, sorted_scores
+
+
+
