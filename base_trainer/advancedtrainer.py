@@ -24,6 +24,9 @@ from neurst.utils.misc import flatten_string_list
 
 from base_trainer import BaseEntry, register_base_trainer
 from utils.metrics_graph_plot import plot_graph
+from neurst.layers.search.beam_search import BeamSearch
+from models.ctnmt_model import CtnmtModel
+from neurst.models.bert import Bert
 
 
 @register_base_trainer("advanced-train")
@@ -87,6 +90,12 @@ class AdvancedTrainer(BaseEntry):
         self._pruning_variable_pattern = args["pruning_variable_pattern"]
         self._nopruning_variable_pattern = args["nopruning_variable_pattern"]
         self.is_checkpoint_restored = False
+        self.args = args
+        # Convert args to dictionary if it's not already a dictionary
+        self.args_dict = vars(args) if isinstance(args, argparse.Namespace) else args
+        # Update args_dict with additional arguments
+        additional_args = {'s': 'en', 't': 'am'}
+        self.args_dict.update(additional_args)
 
     @staticmethod
     def class_or_method_args():
@@ -361,30 +370,7 @@ class AdvancedTrainer(BaseEntry):
                 callbacks=training_callbacks)
 
         logging.info(history.history)
-
-        # Step before saving the model
-        # Define the input signature for serving
-        input_signature = {
-            'input': tf.TensorSpec(shape=[None, tf.shape(formatted_inps)], dtype=tf.float32),  # Adjust 'input_shape' accordingly
-        }
-
-        # Create a serving function
-        @tf.function(input_signature=[input_signature])
-        def serve_fn(serialized_examples):
-            # Parse the input tf.Example protobufs
-            examples = tf.io.parse_example(serialized_examples, input_signature)
-            # Get the input from the parsed example
-            model_input = examples['input']  # Adjust according to your input tensor name
-            # Run the model
-            predictions = keras_model(model_input, training=False)
-            # Return the predictions
-            return {'output': predictions}  # Adjust according to your output tensor name
-
-        # Get the serving function
-        serving_fn = serve_fn.get_concrete_function()
-
-        # Save the model with the serving function as the default signature
-        tf.saved_model.save(keras_model, self.model_output_dir, signatures={'serving_default': serving_fn})
+        tf.saved_model.save(keras_model, self.model_output_dir)
 
         epoch_data = []
         with open(self.csv_output_dir, 'r') as csvfile:
@@ -397,5 +383,4 @@ class AdvancedTrainer(BaseEntry):
 
         # Creating a dummy argparse Namespace object for the plot_graph function's `args` parameter
         # You may need to adjust the source ('s') and target ('t') languages based on your training setup
-        plot_args = argparse.Namespace(s='en', t='am')
-        plot_graph(epoch_data, plot_args, self.output_dir)
+        plot_graph(epoch_data, self.args_dict, self.output_dir)
